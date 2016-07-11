@@ -1,0 +1,104 @@
+group = 'com.mycompanylaw'
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.3' //If you change this value, you must run ./gradlew wrapper
+}
+
+buildscript {
+    dependencies {
+        classpath 'com.github.maiflai:gradle-scalatest:0.6-5-g9065d91'
+        classpath 'org.flywaydb:flyway-gradle-plugin:3.1'
+        classpath 'com.typesafe:config:1.2.1'
+        classpath files('src/main/resources')
+        classpath 'org.akhikhl.gretty:gretty:1.2.2'
+    }
+}
+
+ext {
+    scalaMajorMinorVersion = '2.11'
+    scalaVersion = "${scalaMajorMinorVersion}.6"
+    mclSchemaVersion = "1.5.8"
+    idpSchemaVersion = "0.0.15"
+    liftMajorMinorVersion = "2.6"
+    liftVersion = "${liftMajorMinorVersion}.1"
+    microServiceVersion = "0.0.0"
+    legislationVersion = "0.0.17"
+}
+
+apply {
+    plugin 'scala'
+    plugin 'flyway'
+    plugin 'com.github.maiflai.scalatest'
+    plugin 'org.akhikhl.gretty'
+    plugin 'war'
+}
+
+configurations.all {
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+
+dependencies {
+    compile "org.scala-lang:scala-library:${scalaVersion}"
+    compile ("net.liftweb:lift-webkit_${scalaMajorMinorVersion}:${liftVersion}") {
+        force = true
+    }
+    compile ("com.mycompanylaw:mcl-slick:${mclSchemaVersion}") {
+        force = true
+    }
+    compile("com.mycompanylaw:mcl-migrations:${mclSchemaVersion}") {
+        force = true
+    }
+    compile "com.mycompanylaw:mcl-search:new-filters-SNAPSHOT"
+    compile ("com.fromcounsel:fc-idp-slick:${idpSchemaVersion}") {
+        force = true
+    }
+    compile("com.esv.legislation:legislation-service:${legislationVersion}") {
+        force = true
+    }
+    compile("com.esv.legislation:legislation-service:${legislationVersion}@jar") {
+        force = true
+    }
+    compile("com.esv:auth-utils:0.0.0")
+
+    compile 'com.typesafe:config:1.2.1'
+    compile 'org.apache.commons:commons-dbcp2:2.0.1'
+    compile ("net.liftmodules:fobo_${liftMajorMinorVersion}_${scalaMajorMinorVersion}:1.3") {
+        force = true
+    }
+    compile "com.esv:micro-service:${microServiceVersion}"
+    compile "org.antlr:antlr4:4.2.2"
+
+    runtime 'ch.qos.logback:logback-classic:1.1.2'
+    compile "com.typesafe.akka:akka-actor_${scalaMajorMinorVersion}:2.3.12"
+
+    testCompile "org.scalatest:scalatest_${scalaMajorMinorVersion}:2.2.4"
+    testCompile "net.liftweb:lift-testkit_${scalaMajorMinorVersion}:${liftVersion}"
+    testCompile "org.mockito:mockito-all:1.9.5"
+    testRuntime 'org.pegdown:pegdown:1.4.2'
+    testCompile 'com.h2database:h2:1.4.178'
+    testCompile "com.esv:micro-service-testkit:${microServiceVersion}"
+}
+
+test {
+    jvmArgs '-Drun.mode=test'
+}
+
+import com.typesafe.config.ConfigFactory
+def dbconfig = ConfigFactory.load().getConfig("mcl.env.db")
+flyway {
+    url = dbconfig.getString("jdbcUrl")
+}
+
+sourceSets {
+    test {
+        resources {
+            srcDirs +=  "$projectDir/src/main/webapp"
+        }
+    }
+}
+
+gretty {
+    servletContainer = 'jetty9'
+    contextPath = '/secure'
+    port = 8082
+}
